@@ -37,7 +37,8 @@ def download_mimit_csv(url, sep="|"):
     r.raise_for_status()
     lines = r.text.splitlines()
     # Prima riga è "Estrazione del YYYY-MM-DD" — la saltiamo
-    df = pd.read_csv(StringIO("\n".join(lines[1:])), sep=sep)
+    df = pd.read_csv(StringIO("\n".join(lines[1:])), sep=sep,
+                     on_bad_lines="skip", engine="python")
     print(f"    → {len(df)} righe, colonne: {df.columns.tolist()[:4]}...")
     return df, lines[0]
 
