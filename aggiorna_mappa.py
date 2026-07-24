@@ -2,7 +2,8 @@
 """
 aggiorna_mappa.py
 -----------------
-Scarica il CSV prezzi carburanti dal MIMIT e aggiorna mappa_carburanti.html.
+Scarica il CSV prezzi carburanti e l'anagrafica dal MIMIT,
+aggiorna mappa_carburanti.html e salva.
 Viene eseguito ogni mattina da GitHub Actions.
 
 Dipendenze: pandas requests
@@ -18,9 +19,9 @@ from io import StringIO
 from pathlib import Path
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
-HTML_FILE = Path("mappa_carburanti.html")
-ANA_FILE  = Path("anagrafica_impianti_attivi.csv")
-CSV_URL   = "https://www.mimit.gov.it/images/exportCSV/prezzo_alle_8.csv"
+HTML_FILE    = Path("mappa_carburanti.html")
+PREZZI_URL   = "https://www.mimit.gov.it/images/exportCSV/prezzo_alle_8.csv"
+ANA_URL      = "https://www.mimit.gov.it/images/exportCSV/anagrafica_impianti_attivi.csv"
 
 # Fix coordinate distributore di Riace (precedentemente geocodificato a Parma)
 RIACE_FIXES = [
@@ -29,20 +30,38 @@ RIACE_FIXES = [
 ]
 
 
-# ── STEP 1: Scarica CSV ───────────────────────────────────────────────────────
-def download_csv():
-    print(f"Scaricando {CSV_URL} ...")
-    r = requests.get(CSV_URL, timeout=30)
+# ── Scarica un CSV dal MIMIT (prima riga = metadata, skippa) ─────────────────
+def download_mimit_csv(url, sep="|"):
+    print(f"  Scaricando {url} ...")
+    r = requests.get(url, timeout=60)
     r.raise_for_status()
     lines = r.text.splitlines()
-    date_match = re.search(r"\d{4}-\d{2}-\d{2}", lines[0])
+    # Prima riga è "Estrazione del YYYY-MM-DD" — la saltiamo
+    df = pd.read_csv(StringIO("\n".join(lines[1:])), sep=sep)
+    print(f"    → {len(df)} righe, colonne: {df.columns.tolist()[:4]}...")
+    return df, lines[0]
+
+
+# ── Scarica prezzi ────────────────────────────────────────────────────────────
+def download_prezzi():
+    df, header = download_mimit_csv(PREZZI_URL)
+    date_match = re.search(r"\d{4}-\d{2}-\d{2}", header)
     date_str = date_match.group() if date_match else datetime.today().strftime("%Y-%m-%d")
-    df = pd.read_csv(StringIO("\n".join(lines[1:])), sep="|")
-    print(f"  → {len(df)} righe, estrazione del {date_str}")
+    print(f"  → Estrazione del {date_str}")
     return df, date_str
 
 
-# ── STEP 2: Carica HTML e separa le parti ────────────────────────────────────
+# ── Scarica anagrafica ────────────────────────────────────────────────────────
+def download_anagrafica():
+    df, _ = download_mimit_csv(ANA_URL)
+    # Verifica colonne attese
+    needed = {"idImpianto", "Latitudine", "Longitudine"}
+    if not needed.issubset(df.columns):
+        raise ValueError(f"Colonne anagrafica inattese: {df.columns.tolist()}")
+    return df
+
+
+# ── Carica HTML e separa le parti ────────────────────────────────────────────
 def load_html():
     with open(HTML_FILE, encoding="utf-8") as f:
         c = f.read()
@@ -57,10 +76,8 @@ def load_html():
     return head, main_js, tail
 
 
-# ── STEP 3: Aggiorna prezzi ───────────────────────────────────────────────────
-def update_prices(main_js, df):
-    ana = pd.read_csv(ANA_FILE, skiprows=1, sep="|")
-
+# ── Aggiorna prezzi ───────────────────────────────────────────────────────────
+def update_prices(main_js, df_prezzi, ana):
     idx  = main_js.find("const DATA = ")
     raw  = main_js[idx + len("const DATA = "):]
     end  = raw.find(";\nconst ")
@@ -91,7 +108,7 @@ def update_prices(main_js, df):
 
     # Carica nuovi prezzi
     upd = 0
-    for row in df.itertuples():
+    for row in df_prezzi.itertuples():
         coord = id2c.get(row.idImpianto)
         if coord is None: continue
         fi = fuel_idx_map.get(row.descCarburante)
@@ -121,7 +138,7 @@ def update_prices(main_js, df):
     return main_js
 
 
-# ── STEP 4: Aggiorna data nel footer ─────────────────────────────────────────
+# ── Aggiorna data nel footer ──────────────────────────────────────────────────
 def update_footer(head, date_str):
     d = datetime.strptime(date_str, "%Y-%m-%d")
     it_date = d.strftime("%d/%m/%Y")
@@ -132,7 +149,7 @@ def update_footer(head, date_str):
     )
 
 
-# ── STEP 5: Salva ─────────────────────────────────────────────────────────────
+# ── Salva ─────────────────────────────────────────────────────────────────────
 def save_html(head, main_js, tail):
     final = head + "<script>\n" + main_js + tail
     opens  = len(re.findall(r"<script", final))
@@ -148,19 +165,21 @@ def save_html(head, main_js, tail):
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 def main():
     if not HTML_FILE.exists():
-        sys.exit(f"Errore: {HTML_FILE} non trovato")
-    if not ANA_FILE.exists():
-        sys.exit(f"Errore: {ANA_FILE} non trovato")
+        sys.exit(f"Errore: {HTML_FILE} non trovato nel repository")
 
     print("=== Aggiornamento mappa carburanti ===")
 
-    df, date_str = download_csv()
+    print("Download prezzi...")
+    df_prezzi, date_str = download_prezzi()
+
+    print("Download anagrafica...")
+    ana = download_anagrafica()
 
     print("Caricamento HTML...")
     head, main_js, tail = load_html()
 
     print("Aggiornamento prezzi...")
-    main_js = update_prices(main_js, df)
+    main_js = update_prices(main_js, df_prezzi, ana)
 
     head = update_footer(head, date_str)
 
