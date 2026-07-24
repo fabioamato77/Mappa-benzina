@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conviene uscire? — Calcolatore rifornimento autostrada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --asphalt: #ffffff;
+    --asphalt-2: #ffffff;
+    --concrete: #4a4740;
+    --autostrada-green: #0b6e3f;
+    --autostrada-green-dark: #084e2d;
+    --strada-blue: #0a5aa8;
+    --strada-blue-dark: #073e75;
+    --lane-white: #ffffff;
+    --catseye: #b8790a;
+    --ink: #1a1a1a;
+    --muted: #726e64;
+    --page-bg: #f6f4ee;
+    --line: #d8d3c6;
+    --border: #e2ddd0;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      repeating-linear-gradient(180deg, transparent 0 46px, var(--line) 46px 52px, transparent 52px 98px) center/6px 100% no-repeat,
+      var(--page-bg);
+    background-size: 6px 100%;
+    background-position: center top;
+    font-family:'Public Sans', sans-serif;
+    color: var(--ink);
+    min-height:100vh;
+    padding: 40px 16px 80px;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color: var(--catseye);
+    text-align:center;
+    margin-bottom:10px;
+  }
+  h1{
+    font-family:'Oswald', sans-serif;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.02em;
+    font-size: clamp(28px, 6vw, 46px);
+    text-align:center;
+    margin: 0 0 6px;
+    color: var(--ink);
+  }
+  .sub{
+    text-align:center;
+    color: var(--muted);
+    font-size:14.5px;
+    max-width:520px;
+    margin: 0 auto 36px;
+    line-height:1.5;
+  }
+
+  .panel{
+    background: var(--asphalt-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 2px rgba(30,28,20,.04);
+  }
+  .panel h2{
+    font-family:'Oswald', sans-serif;
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:.1em;
+    color: var(--muted);
+    margin:0 0 16px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .panel h2::before{
+    content:'';
+    width:8px; height:8px; border-radius:2px;
+    background: var(--catseye);
+    display:inline-block;
+  }
+
+  .grid{display:grid; grid-template-columns: 1fr 1fr; gap:14px 16px;}
+  @media(max-width:560px){.grid{grid-template-columns:1fr;}}
+
+  .field label{
+    display:block;
+    font-size:12.5px;
+    color: var(--muted);
+    margin-bottom:6px;
+    font-family:'IBM Plex Mono', monospace;
+    letter-spacing:.02em;
+  }
+  .field .unit-row{position:relative;}
+  .field input, .field select{
+    width:100%;
+    background: var(--page-bg);
+    border: 1px solid #cfc9ba;
+    color: var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:16px;
+    font-weight:600;
+    padding: 10px 40px 10px 12px;
+    border-radius:6px;
+    appearance:none;
+    -webkit-appearance:none;
+  }
+  .field select{padding-right:30px;}
+  .field input:focus, .field select:focus{
+    outline: 2px solid var(--catseye);
+    outline-offset:1px;
+  }
+  .field .unit{
+    position:absolute; right:12px; top:50%; transform:translateY(-50%);
+    color: var(--muted); font-size:13px; font-family:'IBM Plex Mono', monospace;
+    pointer-events:none;
+  }
+
+  .toggle-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding-top:6px;
+  }
+  .toggle-row span{font-size:13.5px; color:var(--concrete);}
+  .switch{
+    position:relative; width:44px; height:24px; flex-shrink:0;
+  }
+  .switch input{position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; z-index:2;}
+  .switch .track{
+    position:absolute; inset:0; background:#d6d0c1; border-radius:20px; transition:.2s;
+  }
+  .switch .thumb{
+    position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%;
+    background: #ffffff; box-shadow:0 1px 2px rgba(0,0,0,.25); transition:.2s;
+  }
+  .switch input:checked + .track{background: var(--catseye);}
+  .switch input:checked ~ .thumb{transform:translateX(20px);}
+
+  #timeExtra{margin-top:14px; max-height:0; overflow:hidden; transition:max-height .25s ease;}
+  #timeExtra.open{max-height:200px;}
+
+  /* Verdict sign */
+  .sign-wrap{margin: 26px 0 8px; display:flex; justify-content:center;}
+  .sign{
+    width:100%;
+    border-radius:6px;
+    padding: 26px 24px;
+    text-align:center;
+    border: 5px solid var(--lane-white);
+    position:relative;
+    transition: background .3s ease, border-color .3s ease;
+  }
+  .sign.green{background: var(--autostrada-green); box-shadow: inset 0 0 0 2px var(--autostrada-green-dark);}
+  .sign.blue{background: var(--strada-blue); box-shadow: inset 0 0 0 2px var(--strada-blue-dark);}
+  .sign .verdict-label{
+    font-family:'Oswald', sans-serif;
+    font-weight:700;
+    text-transform:uppercase;
+    font-size: clamp(20px, 4.6vw, 30px);
+    letter-spacing:.02em;
+    color:#fff;
+    margin:0 0 8px;
+  }
+  .sign .verdict-sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    color:#eef3ee;
+    opacity:.92;
+  }
+  .sign .verdict-figure{
+    font-family:'Oswald', sans-serif;
+    font-size: clamp(30px,7vw,44px);
+    font-weight:600;
+    color:#fff;
+    margin: 4px 0 2px;
+  }
+
+  .breakdown{
+    margin-top:16px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color: var(--concrete);
+  }
+  .breakdown .row{
+    display:flex; justify-content:space-between;
+    padding:7px 0;
+    border-bottom: 1px dashed #ddd7c8;
+  }
+  .breakdown .row:last-child{border-bottom:none; padding-top:10px; color:var(--ink); font-weight:600;}
+  .breakdown .row span:last-child{color:var(--ink);}
+
+  .note{
+    font-size:12px; color: var(--muted); text-align:center; margin-top:28px; line-height:1.6;
+  }
+  .note code{color:var(--catseye); font-family:'IBM Plex Mono', monospace;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Rete ordinaria vs rete autostradale</div>
+  <h1>Conviene uscire a fare benzina?</h1>
+  <p class="sub">Inserisci i tuoi prezzi e la tua percorrenza: calcola se il risparmio sul carburante copre il costo della deviazione.</p>
+
+  <div class="panel">
+    <h2>Prezzi al litro</h2>
+    <div class="grid">
+      <div class="field">
+        <label for="fuel">Carburante</label>
+        <div class="unit-row">
+          <select id="fuel">
+            <option value="benzina">Benzina</option>
+            <option value="gasolio">Gasolio</option>
+            <option value="gpl">GPL</option>
+            <option value="metano">Metano</option>
+          </select>
+        </div>
+      </div>
+      <div></div>
+      <div class="field">
+        <label for="priceHighway">Prezzo in autostrada</label>
+        <div class="unit-row">
+          <input type="number" id="priceHighway" step="0.001" value="2.059">
+          <span class="unit">€/l</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="priceOutside">Prezzo fuori, al distributore d'uscita</label>
+        <div class="unit-row">
+          <input type="number" id="priceOutside" step="0.001" value="1.968">
+          <span class="unit">€/l</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Il tuo rifornimento e la deviazione</h2>
+    <div class="grid">
+      <div class="field">
+        <label for="liters">Litri da fare</label>
+        <div class="unit-row">
+          <input type="number" id="liters" step="1" value="40">
+          <span class="unit">l</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="extraKm">Km extra per uscita + rientro</label>
+        <div class="unit-row">
+          <input type="number" id="extraKm" step="0.5" value="4">
+          <span class="unit">km</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="consumption">Consumo medio</label>
+        <div class="unit-row">
+          <input type="number" id="consumption" step="0.5" value="15">
+          <span class="unit">km/l</span>
+        </div>
+      </div>
+      <div class="field" style="display:flex; align-items:flex-end;">
+        <div class="toggle-row" style="width:100%;">
+          <span>Considera anche il tempo perso</span>
+          <label class="switch">
+            <input type="checkbox" id="considerTime">
+            <span class="track"></span>
+            <span class="thumb"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div id="timeExtra">
+      <div class="grid" style="margin-top:14px;">
+        <div class="field">
+          <label for="minutesLost">Minuti persi in più</label>
+          <div class="unit-row">
+            <input type="number" id="minutesLost" step="1" value="8">
+            <span class="unit">min</span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="hourValue">Valore del tuo tempo</label>
+          <div class="unit-row">
+            <input type="number" id="hourValue" step="1" value="15">
+            <span class="unit">€/h</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sign-wrap">
+    <div class="sign" id="signBox">
+      <div class="verdict-label" id="verdictLabel">—</div>
+      <div class="verdict-figure" id="verdictFigure">—</div>
+      <div class="verdict-sub" id="verdictSub">Compila i campi per calcolare</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Come si arriva al risultato</h2>
+    <div class="breakdown">
+      <div class="row"><span>Risparmio sul carburante</span><span id="bSaving">—</span></div>
+      <div class="row"><span>Costo carburante della deviazione</span><span id="bDetourFuel">—</span></div>
+      <div class="row"><span>Costo del tempo perso</span><span id="bTime">—</span></div>
+      <div class="row"><span>Litri minimi per andare in pareggio</span><span id="bBreakeven">—</span></div>
+      <div class="row"><span>Vantaggio netto uscendo</span><span id="bNet">—</span></div>
+    </div>
+  </div>
+
+  <p class="note">Valori di default: medie nazionali self service MIMIT del 24/07/2026 — <code>modificali</code> con i prezzi reali del tratto che ti interessa. Il calcolo è indicativo: non tiene conto del rischio di trovare il distributore fuori servizio o di code al casello.</p>
+</div>
+
+<script>
+const fuelDefaults = {
+  benzina: {highway: 2.059, outside: 1.968},
+  gasolio: {highway: 2.228, outside: 2.161},
+  gpl:     {highway: 0.879, outside: 0.744},
+  metano:  {highway: 1.596, outside: 1.595}
+};
+
+const $ = id => document.getElementById(id);
+const fmtEUR = v => (v<0?'-':'') + '€ ' + Math.abs(v).toFixed(2).replace('.', ',');
+
+function applyFuelDefaults(){
+  const f = fuelDefaults[$('fuel').value];
+  $('priceHighway').value = f.highway;
+  $('priceOutside').value = f.outside;
+  calc();
+}
+
+function calc(){
+  const priceHighway = parseFloat($('priceHighway').value) || 0;
+  const priceOutside = parseFloat($('priceOutside').value) || 0;
+  const liters = parseFloat($('liters').value) || 0;
+  const extraKm = parseFloat($('extraKm').value) || 0;
+  const consumption = parseFloat($('consumption').value) || 1;
+  const considerTime = $('considerTime').checked;
+  const minutesLost = parseFloat($('minutesLost').value) || 0;
+  const hourValue = parseFloat($('hourValue').value) || 0;
+
+  const perLiterDiff = priceHighway - priceOutside;
+  const saving = perLiterDiff * liters;
+  const detourFuelCost = (extraKm / consumption) * priceOutside;
+  const timeCost = considerTime ? (minutesLost/60) * hourValue : 0;
+  const net = saving - detourFuelCost - timeCost;
+
+  const fixedCost = detourFuelCost + timeCost;
+  const breakeven = perLiterDiff > 0 ? (fixedCost / perLiterDiff) : Infinity;
+
+  $('bSaving').textContent = fmtEUR(saving);
+  $('bDetourFuel').textContent = '- ' + fmtEUR(detourFuelCost).replace('€ ','€ ');
+  $('bTime').textContent = considerTime ? '- ' + fmtEUR(timeCost) : 'non considerato';
+  $('bBreakeven').textContent = (perLiterDiff > 0 && isFinite(breakeven)) ? breakeven.toFixed(1) + ' l' : 'n/d';
+  $('bNet').textContent = (net>=0?'+ ':'- ') + fmtEUR(Math.abs(net)).replace('- ','').replace('+ ','');
+  $('bNet').textContent = (net>=0 ? '+ ' : '- ') + fmtEUR(Math.abs(net));
+
+  const sign = $('signBox');
+  const threshold = 1; // soglia sotto la quale è un pareggio
+  if (Math.abs(net) < threshold){
+    sign.className = 'sign blue';
+    $('verdictLabel').textContent = 'Pareggio';
+    $('verdictFigure').textContent = fmtEUR(net);
+    $('verdictSub').textContent = 'La differenza è minima: scegli in base al tempo che hai';
+  } else if (net > 0){
+    sign.className = 'sign blue';
+    $('verdictLabel').textContent = 'Uscita consigliata';
+    $('verdictFigure').textContent = fmtEUR(net);
+    $('verdictSub').textContent = 'Vantaggio netto uscendo dall\'autostrada';
+  } else {
+    sign.className = 'sign green';
+    $('verdictLabel').textContent = 'Prosegui in autostrada';
+    $('verdictFigure').textContent = fmtEUR(net);
+    $('verdictSub').textContent = 'La deviazione costerebbe più di quanto risparmi';
+  }
+}
+
+document.getElementById('considerTime').addEventListener('change', function(){
+  document.getElementById('timeExtra').classList.toggle('open', this.checked);
+  calc();
+});
+document.getElementById('fuel').addEventListener('change', applyFuelDefaults);
+['priceHighway','priceOutside','liters','extraKm','consumption','minutesLost','hourValue'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', calc);
+});
+
+calc();
+</script>
+</body>
+</html>
