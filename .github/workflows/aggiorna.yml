@@ -2,8 +2,8 @@ name: Aggiornamento prezzi carburanti
 
 on:
   schedule:
-    - cron: '0 10 * * *'   # ogni giorno a mezzogiorno ora italiana (= 10:00 UTC in estate)
-  workflow_dispatch:        # permette anche esecuzione manuale dal sito GitHub
+    - cron: '0 10 * * *'
+  workflow_dispatch:
 
 jobs:
   aggiorna:
@@ -12,6 +12,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
 
       - name: Installa dipendenze Python
         run: pip install pandas requests
@@ -24,5 +27,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add mappa_carburanti.html
-          git diff --cached --quiet || git commit -m "Aggiornamento prezzi $(date +'%d/%m/%Y')"
-          git push --force-with-lease origin main
+          git diff --cached --quiet && echo "Nessuna modifica" && exit 0
+          git commit -m "Aggiornamento prezzi $(date +'%d/%m/%Y')"
+          git fetch origin main
+          git reset --soft origin/main
+          git add mappa_carburanti.html
+          git commit -m "Aggiornamento prezzi $(date +'%d/%m/%Y')"
+          git push origin main
