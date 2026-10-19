@@ -20,9 +20,9 @@ from pathlib import Path
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 HTML_FILE    = Path("mappa_carburanti.html")
-PROXY_URL    = "https://deploymimit.fabioamato77.workers.dev/"
-PREZZI_URL   = PROXY_URL + "?url=https://www.mimit.gov.it/images/exportCSV/prezzo_alle_8.csv"
-ANA_URL      = PROXY_URL + "?url=https://www.mimit.gov.it/images/exportCSV/anagrafica_impianti_attivi.csv"
+WORKER_URL   = "https://deploymimit.fabioamato77.workers.dev"
+PREZZI_URL   = WORKER_URL + "?csv=prezzi"
+ANA_URL      = WORKER_URL + "?csv=anagrafica"
 
 # Fix coordinate distributore di Riace (precedentemente geocodificato a Parma)
 RIACE_FIXES = [
