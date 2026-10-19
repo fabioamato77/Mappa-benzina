@@ -20,8 +20,9 @@ from pathlib import Path
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 HTML_FILE    = Path("mappa_carburanti.html")
-PREZZI_URL   = "https://www.mimit.gov.it/images/exportCSV/prezzo_alle_8.csv"
-ANA_URL      = "https://www.mimit.gov.it/images/exportCSV/anagrafica_impianti_attivi.csv"
+PROXY_URL    = "https://deploymimit.fabioamato77.workers.dev/"
+PREZZI_URL   = PROXY_URL + "?url=https://www.mimit.gov.it/images/exportCSV/prezzo_alle_8.csv"
+ANA_URL      = PROXY_URL + "?url=https://www.mimit.gov.it/images/exportCSV/anagrafica_impianti_attivi.csv"
 
 # Fix coordinate distributore di Riace (precedentemente geocodificato a Parma)
 RIACE_FIXES = [
@@ -41,7 +42,7 @@ HEADERS = {
 
 def download_mimit_csv(url, sep="|"):
     print(f"  Scaricando {url} ...")
-    r = requests.get(url, headers=HEADERS, timeout=90)
+    r = requests.get(url, timeout=90)
     r.raise_for_status()
     lines = r.text.splitlines()
     # Prima riga è "Estrazione del YYYY-MM-DD" — la saltiamo
