@@ -31,9 +31,17 @@ RIACE_FIXES = [
 
 
 # ── Scarica un CSV dal MIMIT (prima riga = metadata, skippa) ─────────────────
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "it-IT,it;q=0.9,en;q=0.8",
+    "Referer": "https://www.mimit.gov.it/",
+}
+
 def download_mimit_csv(url, sep="|"):
     print(f"  Scaricando {url} ...")
-    r = requests.get(url, timeout=60)
+    r = requests.get(url, headers=HEADERS, timeout=90)
     r.raise_for_status()
     lines = r.text.splitlines()
     # Prima riga è "Estrazione del YYYY-MM-DD" — la saltiamo
@@ -171,10 +179,20 @@ def main():
     print("=== Aggiornamento mappa carburanti ===")
 
     print("Download prezzi...")
-    df_prezzi, date_str = download_prezzi()
+    try:
+        df_prezzi, date_str = download_prezzi()
+    except Exception as e:
+        print(f"  ✗ Download prezzi fallito: {e}")
+        print("  → Nessuna modifica alla mappa. Uscita senza errore.")
+        sys.exit(0)
 
     print("Download anagrafica...")
-    ana = download_anagrafica()
+    try:
+        ana = download_anagrafica()
+    except Exception as e:
+        print(f"  ✗ Download anagrafica fallito: {e}")
+        print("  → Nessuna modifica alla mappa. Uscita senza errore.")
+        sys.exit(0)
 
     print("Caricamento HTML...")
     head, main_js, tail = load_html()
